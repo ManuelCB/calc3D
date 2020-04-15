@@ -4,7 +4,7 @@ It's currently in development, so it lacks some functions like lighting or camer
 
 But at least it can do this!
 
-[!alt text](demo mode 0.png)
-[!alt text](demo mode 0 and 1.png)
+[!alt text](https://github.com/ManuelCB/calc3D/blob/master/demo%20mode%200%20and%201.png)
+[!alt text](https://github.com/ManuelCB/calc3D/blob/master/demo%20mode%200.png)
 
 
