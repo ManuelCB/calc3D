@@ -4,4 +4,7 @@ It's currently in development, so it lacks some functions like lighting or camer
 
 But at least it can do this!
 
+(demo mode 0.png)
+(demo mode 0 and 1.png)
+
 
