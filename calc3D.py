@@ -1,8 +1,11 @@
 import math
 import pygame
-from pygame.locals import *
-from generals import *
+import pygame.gfxdraw
 import os
+import sys
+from pygame.locals import *
+from .generals import *
+
 
 #Transform float positions into simple integers to avoid Errors
 def simplifypos(p): return (int(p[0]),int(p[1]))
@@ -87,7 +90,21 @@ def absvec3d(v):
     ret = []
     for p in v.pos: ret.append(abs(p))
     return vec3d(tuple(ret))
- 
+
+#Using shapely to get if a 2d polygon is totally inside another one
+
+def totally_inside(p1,p2):
+    ret = True
+    for p in p2:
+        if not Polygon(p1).contains(Point(p)):
+            ret = False
+            break
+    return ret
+
+#Shitty texture loading
+
+def texture(path): return pygame.image.load(os.path.join(os.getcwd(),'res','img',path))
+    
 #3d vectors to computate dimensions easily       
 class vec3d(object):
     def __init__(self,pos):
@@ -169,6 +186,7 @@ class triangle(object):
     def rotate(self,val,pos,axis): 
         self.world.polrotate(self.pol_ID,val,pos,axis)
         self.center.rotate(val,pos,axis)
+
         
 class rect(object):
     def __init__(self,w,p,dim,col):
@@ -256,33 +274,7 @@ class body(object):
     def rotate(self,val,pos,axis):
         for t in self.triangles: t.rotate(val,pos,axis)            
         
-        
-
-class light(object):
-    
-    def __init__(self,w,p,col,po):
-        
-        self.world = w
-        self.pos = p
-        self.pos_vec = vec3d(self.pos)
-        self.col = col
-        self.power = po
-        
-        self.world.lights.append(self)
-    
-    def reset(): pass
-    
-    def illuminate(self,cl,vec):
-        
-        dist = subvec3d(self.pos_vec,vec)
-        ncol = cl    
-        pw = (dist.getDistance(self.pos))/self.power        
-        if pw > 0: 
-            for c in ncol: c *= pw
-        
-        deg0, deg1 = dist.getAngles(self.pos) 
-        
-        return ncol
+       
 
         
 class world(object):
@@ -296,7 +288,8 @@ class world(object):
         self.disp = s
         self.vcount = 0
         self.pcount = 0
-        self.lights = []
+        self.disp_polygon = [[0,0],[0,self.disp.get_size()[0],0],self.disp.get_size(),[0,self.disp.get_size()[1]]]
+        self.background = None
     
     def addvec(self,v):
         self.vec.append(v)
@@ -324,10 +317,10 @@ class world(object):
         sorted_col = []
         ret = []
         
-        for p in p:
+        for p0 in p:
             a = 0
             b = 0
-            for n in p:
+            for n in p0:
                 a += self.vec[n].pos[2]
                 b += 1
             unsorted_z.append(round(a/b,3))
@@ -369,21 +362,59 @@ class world(object):
             i += 1
         
         
-    def draw(self,mode):  
+    def draw(self,mode): 
+        
+        #draw background if exists
+        
+        if type(self.background) is pygame.Surface: 
+            self.disp.blit(self.background,(0,0))
+        elif type(self.background) is tuple: self.disp.fill(self.background)
+        else: self.disp.fill((0,0,0))
+        
         pl,c = self.sortpol(self.pol, self.col)
         
         j = 0
         for p in pl:
             p2 = []
+            p3 = []
+            p1 = []
             neg = True
+            
             for i in p:  
                 p2.append(addvec(self.vec2[i],vec2d(self.fpoint)).pos)
                 if self.vec[i].pos[2] >  0:  neg = False
+                
+            try: 
+                for i in pl[j+1]: p3.append(addvec(self.vec2[i],vec2d(self.fpoint)).pos)
+            except IndexError: pass
+
+            try: 
+                for i in pl[j-1]: p1.append(addvec(self.vec2[i],vec2d(self.fpoint)).pos)
+            except IndexError: pass
+            
             if not neg: 
-                for lg in self.lights: c[j] = lg.illuminate(c[j],vec3d(self.getpolcenter(p)))
                 if mode == 0: pygame.draw.lines(self.disp,(255,255,255),True,p2)  
-                elif mode == 1: pygame.draw.polygon(self.disp,c[j],p2)  
+                elif mode == 1:                
+                    if type(c[j]) is tuple: pygame.draw.polygon(self.disp,c[j],p2)
+                    elif type(c[j]) is pygame.Surface: pygame.gfxdraw.textured_polygon(self.disp,p2,c[j],0,0)
+                    
             j += 1
+            
+class win(object):
 
-           
-
+    def __init__(self,dim):
+        self.display = pygame.display.set_mode(dim)
+        self.clock = pygame.time.Clock()
+        self.fps = 60
+        
+    def update(self,func):
+    
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
+                
+        func(pygame.key.get_pressed())
+        
+        self.clock.tick(self.fps)
+        pygame.display.flip()
